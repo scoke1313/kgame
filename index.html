@@ -3,13 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>둥둥그라운드: 부드러운 버전</title>
+    <title>둥둥그라운드: 선명한 버전</title>
     <style>
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
         body { margin: 0; padding: 0; background-color: #333; font-family: 'Pretendard', sans-serif; overflow: hidden; touch-action: none; user-select: none; display: flex; justify-content: center; align-items: center; height: 100vh; }
         #game-wrapper { position: relative; width: 100%; max-width: 500px; height: 100%; max-height: 900px; background: linear-gradient(to bottom, #4FABFF 0%, #89CFF0 60%, #8BC34A 100%); overflow: hidden; box-shadow: 0 0 30px rgba(0,0,0,0.5); }
-        /* 캔버스 이미지 렌더링 속성 제거 (기본값: 부드러움) */
-        canvas { display: block; width: 100%; height: 100%; }
+        
+        /* 캔버스 설정: 픽셀 깨짐 방지 */
+        canvas { 
+            display: block; width: 100%; height: 100%;
+            /* 도트 튀는 현상 방지를 위해 픽셀 렌더링 옵션 제거 */
+            -webkit-tap-highlight-color: transparent;
+        }
+
         .ui-top { position: absolute; top: 0; left: 0; width: 100%; padding: 15px 20px; box-sizing: border-box; display: flex; justify-content: space-between; align-items: flex-start; pointer-events: none; z-index: 10; }
         .hud-box { background: rgba(0, 0, 0, 0.5); color: #fff; padding: 8px 16px; border-radius: 20px; font-size: 16px; font-weight: bold; display: flex; flex-direction: column; align-items: center; backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
         .hud-label { font-size: 12px; opacity: 0.8; margin-bottom: 2px; }
@@ -20,7 +26,6 @@
         #center-msg p { font-size: 16px; margin-top: 10px; font-weight: 500; line-height: 1.5; }
         #result-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; display: none; animation: fadeIn 0.3s forwards; }
         .card { background: white; width: 85%; padding: 30px; border-radius: 25px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .score-label { color: #666; font-size: 18px; margin-top: 10px; }
         .score-big { font-size: 56px; font-weight: 900; color: #D1180B; margin: 5px 0 20px 0; }
         .btn { background: #FEE500; border: none; padding: 15px 40px; font-size: 22px; font-weight: bold; border-radius: 30px; cursor: pointer; box-shadow: 0 4px 0 #C9B000; transition: transform 0.1s; }
         #damage-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(255, 0, 0, 0.4); opacity: 0; pointer-events: none; z-index: 5; transition: opacity 0.1s; }
@@ -86,13 +91,21 @@
     let floatingTexts = []; 
     let shakeTimer = 0; 
 
+    // ★ 화면 크기 및 선명도 설정
     function resize() {
+        // 모바일 등 고해상도 화면 대응 (선명도 UP)
         const dpr = window.devicePixelRatio || 1;
         const rect = canvas.getBoundingClientRect();
+        
         canvas.width = rect.width * dpr;
         canvas.height = rect.height * dpr;
+        
+        // 캔버스 좌표계 확대
         ctx.scale(dpr, dpr);
-        // ctx.imageSmoothingEnabled = false; // <-- 이 줄을 삭제하거나 주석 처리했습니다.
+        
+        // ★ 중요: 도트가 튀지 않게 부드러운 처리 켜기
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
     }
     window.addEventListener('resize', resize);
     resize();
@@ -153,8 +166,6 @@
         const imgSize = baseSize * 1.04; 
 
         if (playerImage.complete) {
-            // 이미지 그릴 때도 부드럽게 설정 (기본값)
-            // ctx.imageSmoothingEnabled = true; // 명시적으로 적어도 되지만 기본값이 true입니다.
             ctx.drawImage(playerImage, -imgSize/2, -imgSize/2, imgSize, imgSize);
         }
         ctx.restore();
@@ -208,11 +219,16 @@
         const rect = canvas.getBoundingClientRect();
         ctx.clearRect(0, 0, rect.width, rect.height);
         
-        // 전체적으로 부드러운 렌더링 사용
-        // ctx.imageSmoothingEnabled = true; // 기본값이라 생략 가능
-
+        // 1. 구름 그리기 (반투명)
         ctx.fillStyle = 'rgba(255,255,255,0.3)';
         clouds.forEach(c => { ctx.beginPath(); ctx.arc(c.x, c.y, c.size, 0, Math.PI*2); ctx.fill(); });
+        
+        // 2. ★ 중요: 구름 그린 후 투명도와 색상 리셋!!
+        // 이걸 안 하면 구름의 반투명 속성이 아이템에도 적용되어 흐릿하게 보입니다.
+        ctx.fillStyle = '#000000'; // 검정색으로 복귀 (이모티콘은 자체 색상 사용하지만 안전장치)
+        ctx.globalAlpha = 1.0;     // 투명도 100% (완전 불투명)
+
+        // 3. 아이템 그리기 (이제 선명하게 나옴)
         ctx.textAlign = "center"; ctx.textBaseline = "middle";
         objects.forEach(obj => {
             if(obj.hit && obj.type === 'BAD') ctx.globalAlpha = 0.5;
@@ -220,11 +236,15 @@
             if (obj.visual === '🚁') fontSize *= 1.8;
             else if (obj.type === 'BAD') fontSize *= 1.5;
             else fontSize *= 1.15;
+            
             ctx.font = `bold ${fontSize * obj.scale}px sans-serif`;
             if(obj.type === 'GOLD') { ctx.save(); ctx.shadowColor = "#FFD700"; ctx.shadowBlur = 25; ctx.fillText(obj.visual, obj.x, obj.y); ctx.restore(); }
             else { ctx.fillText(obj.visual, obj.x, obj.y); }
+            
+            // 그리기 끝났으면 다시 투명도 원복
             ctx.globalAlpha = 1.0;
         });
+
         if(distance < 150) {
             const gy = rect.height * 0.25 + (distance * 10);
             ctx.fillStyle = '#4CAF50'; ctx.fillRect(0, gy, rect.width, rect.height);
