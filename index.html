@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>둥둥그라운드: 투명 버그 수정판</title>
+    <title>둥둥그라운드: 투명화 완전 해결</title>
     <style>
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
         body { margin: 0; padding: 0; background-color: #333; font-family: 'Pretendard', sans-serif; overflow: hidden; touch-action: none; user-select: none; display: flex; justify-content: center; align-items: center; height: 100vh; }
@@ -95,7 +95,6 @@
         canvas.width = rect.width * dpr;
         canvas.height = rect.height * dpr;
         ctx.scale(dpr, dpr);
-        // 고화질 부드러운 처리
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
     }
@@ -207,51 +206,87 @@
         elAlt.innerText = Math.floor(distance) + "m"; elScore.innerText = score.toLocaleString();
     }
 
+    // ★★★ 여기가 핵심 수정된 draw 함수입니다 ★★★
     function draw() {
         const rect = canvas.getBoundingClientRect();
+        // 1. 화면 전체 지우기
         ctx.clearRect(0, 0, rect.width, rect.height);
         
-        // 구름 그리기
-        ctx.fillStyle = 'rgba(255,255,255,0.3)';
-        clouds.forEach(c => { ctx.beginPath(); ctx.arc(c.x, c.y, c.size, 0, Math.PI*2); ctx.fill(); });
-        
-        // ★ 중요: 색상 및 투명도 초기화
-        ctx.fillStyle = '#000000'; 
-        ctx.globalAlpha = 1.0;     
+        // 2. 구름 그리기 (★완벽 격리★)
+        // save()와 restore()로 감싸서 투명도(0.3)가 절대로 밖으로 못 나가게 가둡니다.
+        ctx.save(); 
+        ctx.globalAlpha = 0.3; // 여기서만 투명하게
+        ctx.fillStyle = '#ffffff';
+        clouds.forEach(c => { 
+            ctx.beginPath(); 
+            ctx.arc(c.x, c.y, c.size, 0, Math.PI*2); 
+            ctx.fill(); 
+        });
+        ctx.restore(); // 여기서 투명도 설정 자동 폐기 -> 다시 불투명(1.0)으로 복구됨
 
-        // 아이템 그리기
-        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        // 3. 아이템 그리기 (이제 무조건 찐하게 나옵니다)
+        ctx.textAlign = "center"; 
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = '#000000'; // 기본 검정 (이모지엔 영향 없지만 안전장치)
+        
+        // 안전을 위해 globalAlpha 강제 초기화
+        ctx.globalAlpha = 1.0; 
+
         objects.forEach(obj => {
-            if(obj.hit && obj.type === 'BAD') ctx.globalAlpha = 0.5;
+            // 맞았을 때만 반투명하게 하기 위해 여기서도 격리 사용
+            ctx.save(); 
+            
+            if(obj.hit && obj.type === 'BAD') {
+                ctx.globalAlpha = 0.5;
+            } else {
+                ctx.globalAlpha = 1.0; // 평소엔 100% 불투명
+            }
+
             let fontSize = 36;
             if (obj.visual === '🚁') fontSize *= 1.8;
             else if (obj.type === 'BAD') fontSize *= 1.5;
             else fontSize *= 1.15;
             
-            // ★ 핵심 수정: 'bold' 제거 및 모바일용 이모지 폰트 추가
-            // 모바일에서 bold가 들어가면 이모지가 투명하게 나오는 버그가 있습니다.
-            ctx.font = `${fontSize * obj.scale}px 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif`;
+            // 모바일 투명 버그 방지를 위해 폰트 단순화 + bold 제거
+            ctx.font = `${fontSize * obj.scale}px sans-serif`;
             
             if(obj.type === 'GOLD') { 
-                ctx.save(); 
                 ctx.shadowColor = "#FFD700"; 
                 ctx.shadowBlur = 25; 
                 ctx.fillText(obj.visual, obj.x, obj.y); 
-                ctx.restore(); 
             } else { 
+                // 그림자 효과 없이 깔끔하게 출력
+                ctx.shadowBlur = 0; 
                 ctx.fillText(obj.visual, obj.x, obj.y); 
             }
             
-            ctx.globalAlpha = 1.0;
+            ctx.restore(); // 아이템 하나 그릴 때 쓴 효과 폐기
         });
 
+        // 4. 바닥 그리기
         if(distance < 150) {
             const gy = rect.height * 0.25 + (distance * 10);
-            ctx.fillStyle = '#4CAF50'; ctx.fillRect(0, gy, rect.width, rect.height);
-            ctx.font = '60px sans-serif'; ctx.fillText('🏁', rect.width*0.5, gy+60);
+            ctx.fillStyle = '#4CAF50'; 
+            ctx.fillRect(0, gy, rect.width, rect.height);
+            ctx.font = '60px sans-serif'; 
+            ctx.fillText('🏁', rect.width*0.5, gy+60);
         }
+
+        // 5. 플레이어 그리기
         drawPlayer();
-        floatingTexts.forEach(ft => { ctx.save(); ctx.globalAlpha = ft.life / 30; ctx.fillStyle = ft.color; ctx.font = "bold 24px Pretendard"; ctx.strokeStyle = "white"; ctx.lineWidth = 3; ctx.strokeText(ft.text, ft.x, ft.y + ft.offsetY); ctx.fillText(ft.text, ft.x, ft.y + ft.offsetY); ctx.restore(); });
+
+        // 6. 점수 텍스트 그리기
+        floatingTexts.forEach(ft => { 
+            ctx.save(); 
+            ctx.globalAlpha = ft.life / 30; 
+            ctx.fillStyle = ft.color; 
+            ctx.font = "bold 24px Pretendard"; 
+            ctx.strokeStyle = "white"; 
+            ctx.lineWidth = 3; 
+            ctx.strokeText(ft.text, ft.x, ft.y + ft.offsetY); 
+            ctx.fillText(ft.text, ft.x, ft.y + ft.offsetY); 
+            ctx.restore(); 
+        });
     }
 
     function loop() { update(); draw(); requestAnimationFrame(loop); }
