@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>둥둥그라운드: 밸런스 패치 완료</title>
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        body { margin: 0; padding: 0; background-color: #333; font-family: 'Pretendard', sans-serif; overflow: hidden; touch-action: none; user-select: none; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        #game-wrapper { position: relative; width: 100%; max-width: 500px; height: 100%; max-height: 900px; background: linear-gradient(to bottom, #4FABFF 0%, #89CFF0 60%, #8BC34A 100%); overflow: hidden; box-shadow: 0 0 30px rgba(0,0,0,0.5); }
+        canvas { display: block; width: 100%; height: 100%; }
+        .ui-top { position: absolute; top: 0; left: 0; width: 100%; padding: 15px 20px; box-sizing: border-box; display: flex; justify-content: space-between; align-items: flex-start; pointer-events: none; z-index: 10; }
+        .hud-box { background: rgba(0, 0, 0, 0.5); color: #fff; padding: 8px 16px; border-radius: 20px; font-size: 16px; font-weight: bold; display: flex; flex-direction: column; align-items: center; backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        .hud-label { font-size: 12px; opacity: 0.8; margin-bottom: 2px; }
+        .hud-value { font-size: 24px; color: #fff; text-shadow: 1px 1px 0 #000; }
+        #score-box .hud-value { color: #FFD700; font-size: 28px; }
+        #center-msg { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: white; width: 100%; pointer-events: none; z-index: 20; text-shadow: 0 2px 5px rgba(0,0,0,0.5); transition: opacity 0.3s; }
+        #center-msg h1 { font-size: 40px; margin: 0; color: #FEE500; -webkit-text-stroke: 1px #333; }
+        #center-msg p { font-size: 16px; margin-top: 10px; font-weight: 500; line-height: 1.5; }
+        #result-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; display: none; animation: fadeIn 0.3s forwards; }
+        .card { background: white; width: 85%; padding: 30px; border-radius: 25px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .score-big { font-size: 56px; font-weight: 900; color: #D1180B; margin: 5px 0 20px 0; }
+        .btn { background: #FEE500; border: none; padding: 15px 40px; font-size: 22px; font-weight: bold; border-radius: 30px; cursor: pointer; box-shadow: 0 4px 0 #C9B000; transition: transform 0.1s; }
+        #damage-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(255, 0, 0, 0.4); opacity: 0; pointer-events: none; z-index: 5; transition: opacity 0.1s; }
+        #flash-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: white; opacity: 0; pointer-events: none; z-index: 6; transition: opacity 0.1s; }
+    </style>
+</head>
+<body>
+
+<div id="game-wrapper">
+    <div id="damage-overlay"></div>
+    <div id="flash-overlay"></div>
+    <div class="ui-top">
+        <div class="hud-box">
+            <span class="hud-label">남은 거리</span>
+            <span class="hud-value" id="alt-display">1500m</span>
+        </div>
+        <div class="hud-box" id="score-box">
+            <span class="hud-label">SCORE</span>
+            <span class="hud-value" id="score-display">0</span>
+        </div>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+    <div id="center-msg">
+        <h1>TOUCH TO TURN</h1>
+        <p>터치로 방향 전환!<br>📦보급상자를 싹쓸이하세요!<br>🍠✨<strong>황금 고구마는 대박 찬스!</strong></p>
+    </div>
+    <div id="result-screen">
+        <div class="card">
+            <h2>작전 완료!</h2>
+            <p>최종 점수</p>
+            <div class="score-big" id="res-score">0</div>
+            <button class="btn" onclick="resetGame()">다시 도전</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const elAlt = document.getElementById('alt-display');
+    const elScore = document.getElementById('score-display');
+    const elMsg = document.getElementById('center-msg');
+    const elResult = document.getElementById('result-screen');
+    const elResScore = document.getElementById('res-score');
+    const elDamage = document.getElementById('damage-overlay');
+    const elFlash = document.getElementById('flash-overlay');
+
+    const playerImage = new Image();
+    playerImage.src = 'dong_chun.png';
+
+    const TOTAL_DISTANCE = 1500; 
+    const DESCENT_SPEED = 8;     
+    const LATERAL_SPEED = 7;     
+    const SPAWN_INTERVAL = 2; 
+    
+    let gameState = 'READY'; 
+    let distance = TOTAL_DISTANCE;
+    let score = 0;
+    let playerDir = 1; 
+    let frameCount = 0;
+    let objects = []; 
+    let clouds = [];
+    let floatingTexts = []; 
+    let shakeTimer = 0; 
+
+    function resize() {
+        canvas.width = canvas.parentElement.clientWidth;
+        canvas.height = canvas.parentElement.clientHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    const wrapper = document.getElementById('game-wrapper');
+    const handleInput = (e) => {
+        if(e.cancelable) e.preventDefault();
+        if(gameState === 'READY') { gameState = 'PLAYING'; elMsg.style.opacity = 0; return; }
+        if(gameState === 'PLAYING') { playerDir *= -1; }
+    };
+    wrapper.addEventListener('mousedown', handleInput);
+    wrapper.addEventListener('touchstart', handleInput, {passive: false});
+
+    function spawnCloud(initialY = -100) {
+        clouds.push({ x: Math.random() * canvas.width, y: initialY, size: Math.random() * 40 + 40, speedScale: Math.random() * 0.5 + 0.5 });
+    }
+
+    function spawnObject() {
+        const center = canvas.width / 2;
+        const range = canvas.width * 0.95; 
+        const x = center + (Math.random() * range - range/2);
+        const rand = Math.random();
+        let type, visual, value;
+
+        if (rand < 0.01) { type = 'GOLD'; visual = '🍠✨'; value = 500; } 
+        else if (rand < 0.76) { type = 'CRATE'; visual = '📦'; value = 100; } 
+        else { type = 'BAD'; visual = Math.random() < 0.5 ? '🐦' : '🚁'; value = -200; }
+
+        objects.push({ x: x, y: canvas.height + 50, type: type, visual: visual, value: value, hit: false, scale: 1, transformed: false });
+    }
+
+    function showFloatingText(x, y, text, color) {
+        floatingTexts.push({ x: x, y: y, text: text, color: color, life: 30, offsetY: 0 });
+    }
+
+    function triggerGoldEffect() {
+        elFlash.style.opacity = 0.8;
+        setTimeout(() => elFlash.style.opacity = 0, 300);
+        objects.forEach(obj => {
+            if (obj.type === 'BAD' && !obj.hit) {
+                obj.type = 'CRATE'; obj.visual = '📦'; obj.value = 100; obj.scale = 1.5; obj.transformed = true;
+                showFloatingText(obj.x, obj.y - 60, "변신!", "#FFD700");
+            }
+        });
+    }
+
+    function drawPlayer() {
+        const cx = canvas.width / 2;
+        const cy = canvas.height * 0.25; 
+        ctx.save();
+        if (shakeTimer > 0) { ctx.translate((Math.random()-0.5)*10, (Math.random()-0.5)*10); shakeTimer--; }
+        ctx.translate(cx, cy);
+        ctx.rotate(playerDir * 0.15);
+        ctx.scale(playerDir, 1);
+
+        // ★ 춘식이 크기: 이전 크기에서 20% 축소 적용
+        const baseSize = 130;
+        const imgSize = baseSize * 1.04; // (기존 1.3에서 20% 감소된 수치)
+
+        if (playerImage.complete) {
+            ctx.drawImage(playerImage, -imgSize/2, -imgSize/2, imgSize, imgSize);
+        }
+        ctx.restore();
+    }
+
+    function gameOver() { gameState = 'END'; elResult.style.display = 'flex'; elResScore.innerText = score.toLocaleString(); }
+
+    function resetGame() {
+        distance = TOTAL_DISTANCE; playerDir = 1; objects = []; clouds = []; floatingTexts = []; score = 0;
+        for(let i=0; i<15; i++) spawnCloud(Math.random() * canvas.height);
+        gameState = 'READY'; elResult.style.display = 'none'; elMsg.style.opacity = 1;
+        elAlt.innerText = TOTAL_DISTANCE + "m"; elScore.innerText = "0";
+        draw();
+    }
+
+    function update() {
+        if(gameState !== 'PLAYING') return;
+        frameCount++;
+        distance -= DESCENT_SPEED * 0.1;
+        if(distance <= 0) { distance = 0; gameOver(); return; }
+        if(frameCount % SPAWN_INTERVAL === 0) spawnObject();
+        if(frameCount % 20 === 0) spawnCloud(canvas.height + 50);
+        const bgMoveX = -playerDir * LATERAL_SPEED * 0.5; 
+        for(let i = clouds.length - 1; i >= 0; i--) {
+            let c = clouds[i]; c.y -= DESCENT_SPEED * c.speedScale; c.x += bgMoveX * c.speedScale;
+            if(c.y < -100) clouds.splice(i, 1);
+        }
+        const obsMoveX = -playerDir * LATERAL_SPEED;
+        for(let i = objects.length - 1; i >= 0; i--) {
+            let obj = objects[i]; obj.y -= DESCENT_SPEED; obj.x += obsMoveX;
+            if(obj.type === 'GOLD' || obj.transformed) { obj.scale = obj.transformed ? obj.scale + (1 - obj.scale) * 0.1 : 1 + Math.sin(frameCount * 0.2) * 0.2; }
+            if(obj.y < -100) { objects.splice(i, 1); continue; }
+            if(!obj.hit) {
+                const hitDist = 45; 
+                const dist = Math.sqrt(Math.pow(canvas.width/2 - obj.x, 2) + Math.pow(canvas.height*0.25 - obj.y, 2));
+                if(dist < hitDist) {
+                    obj.hit = true; score += obj.value; if(score < 0) score = 0;
+                    if (obj.type === 'BAD') { shakeTimer = 10; elDamage.style.opacity = 0.6; setTimeout(()=> elDamage.style.opacity = 0, 100); showFloatingText(canvas.width/2, canvas.height*0.25 - 60, "-200", "#FF4444"); }
+                    else if (obj.type === 'GOLD') { triggerGoldEffect(); showFloatingText(canvas.width/2, canvas.height*0.25 - 60, "JACKPOT!", "#FFD700"); objects.splice(i, 1); }
+                    else { showFloatingText(canvas.width/2, canvas.height*0.25 - 60, "+100", "#8BC34A"); objects.splice(i, 1); }
+                }
+            }
+        }
+        for(let i = floatingTexts.length - 1; i >= 0; i--) { let ft = floatingTexts[i]; ft.life--; ft.offsetY -= 2; if(ft.life <= 0) floatingTexts.splice(i, 1); }
+        elAlt.innerText = Math.floor(distance) + "m"; elScore.innerText = score.toLocaleString();
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        clouds.forEach(c => { ctx.beginPath(); ctx.arc(c.x, c.y, c.size, 0, Math.PI*2); ctx.fill(); });
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        objects.forEach(obj => {
+            if(obj.hit && obj.type === 'BAD') ctx.globalAlpha = 0.5;
+            // ★ 헬기 크기: 기존보다 20% 추가 확대 적용
+            let fontSize = 36;
+            if (obj.visual === '🚁') fontSize *= 1.8; // (기존 1.5에서 20% 추가 증가)
+            else if (obj.type === 'BAD') fontSize *= 1.5;
+            else fontSize *= 1.15;
+            ctx.font = (fontSize * obj.scale) + "px sans-serif";
+            if(obj.type === 'GOLD') { ctx.save(); ctx.shadowColor = "#FFD700"; ctx.shadowBlur = 25; ctx.fillText(obj.visual, obj.x, obj.y); ctx.restore(); }
+            else { ctx.fillText(obj.visual, obj.x, obj.y); }
+            ctx.globalAlpha = 1.0;
+        });
+        if(distance < 150) {
+            const gy = canvas.height * 0.25 + (distance * 10);
+            ctx.fillStyle = '#4CAF50'; ctx.fillRect(0, gy, canvas.width, canvas.height);
+            ctx.font = '60px sans-serif'; ctx.fillText('🏁', canvas.width*0.5, gy+60);
+        }
+        drawPlayer();
+        floatingTexts.forEach(ft => { ctx.save(); ctx.globalAlpha = ft.life / 30; ctx.fillStyle = ft.color; ctx.font = "bold 30px Pretendard"; ctx.strokeStyle = "white"; ctx.lineWidth = 3; ctx.strokeText(ft.text, ft.x, ft.y + ft.offsetY); ctx.fillText(ft.text, ft.x, ft.y + ft.offsetY); ctx.restore(); });
+    }
+
+    function loop() { update(); draw(); requestAnimationFrame(loop); }
+    playerImage.onload = () => { resetGame(); loop(); };
+</script>
+</body>
+</html>
