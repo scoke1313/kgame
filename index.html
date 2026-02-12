@@ -3,16 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>둥둥그라운드: 선명한 버전</title>
+    <title>둥둥그라운드: 투명 버그 수정판</title>
     <style>
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
         body { margin: 0; padding: 0; background-color: #333; font-family: 'Pretendard', sans-serif; overflow: hidden; touch-action: none; user-select: none; display: flex; justify-content: center; align-items: center; height: 100vh; }
         #game-wrapper { position: relative; width: 100%; max-width: 500px; height: 100%; max-height: 900px; background: linear-gradient(to bottom, #4FABFF 0%, #89CFF0 60%, #8BC34A 100%); overflow: hidden; box-shadow: 0 0 30px rgba(0,0,0,0.5); }
         
-        /* 캔버스 설정: 픽셀 깨짐 방지 */
         canvas { 
             display: block; width: 100%; height: 100%;
-            /* 도트 튀는 현상 방지를 위해 픽셀 렌더링 옵션 제거 */
             -webkit-tap-highlight-color: transparent;
         }
 
@@ -91,19 +89,13 @@
     let floatingTexts = []; 
     let shakeTimer = 0; 
 
-    // ★ 화면 크기 및 선명도 설정
     function resize() {
-        // 모바일 등 고해상도 화면 대응 (선명도 UP)
         const dpr = window.devicePixelRatio || 1;
         const rect = canvas.getBoundingClientRect();
-        
         canvas.width = rect.width * dpr;
         canvas.height = rect.height * dpr;
-        
-        // 캔버스 좌표계 확대
         ctx.scale(dpr, dpr);
-        
-        // ★ 중요: 도트가 튀지 않게 부드러운 처리 켜기
+        // 고화질 부드러운 처리
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
     }
@@ -219,16 +211,15 @@
         const rect = canvas.getBoundingClientRect();
         ctx.clearRect(0, 0, rect.width, rect.height);
         
-        // 1. 구름 그리기 (반투명)
+        // 구름 그리기
         ctx.fillStyle = 'rgba(255,255,255,0.3)';
         clouds.forEach(c => { ctx.beginPath(); ctx.arc(c.x, c.y, c.size, 0, Math.PI*2); ctx.fill(); });
         
-        // 2. ★ 중요: 구름 그린 후 투명도와 색상 리셋!!
-        // 이걸 안 하면 구름의 반투명 속성이 아이템에도 적용되어 흐릿하게 보입니다.
-        ctx.fillStyle = '#000000'; // 검정색으로 복귀 (이모티콘은 자체 색상 사용하지만 안전장치)
-        ctx.globalAlpha = 1.0;     // 투명도 100% (완전 불투명)
+        // ★ 중요: 색상 및 투명도 초기화
+        ctx.fillStyle = '#000000'; 
+        ctx.globalAlpha = 1.0;     
 
-        // 3. 아이템 그리기 (이제 선명하게 나옴)
+        // 아이템 그리기
         ctx.textAlign = "center"; ctx.textBaseline = "middle";
         objects.forEach(obj => {
             if(obj.hit && obj.type === 'BAD') ctx.globalAlpha = 0.5;
@@ -237,11 +228,20 @@
             else if (obj.type === 'BAD') fontSize *= 1.5;
             else fontSize *= 1.15;
             
-            ctx.font = `bold ${fontSize * obj.scale}px sans-serif`;
-            if(obj.type === 'GOLD') { ctx.save(); ctx.shadowColor = "#FFD700"; ctx.shadowBlur = 25; ctx.fillText(obj.visual, obj.x, obj.y); ctx.restore(); }
-            else { ctx.fillText(obj.visual, obj.x, obj.y); }
+            // ★ 핵심 수정: 'bold' 제거 및 모바일용 이모지 폰트 추가
+            // 모바일에서 bold가 들어가면 이모지가 투명하게 나오는 버그가 있습니다.
+            ctx.font = `${fontSize * obj.scale}px 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif`;
             
-            // 그리기 끝났으면 다시 투명도 원복
+            if(obj.type === 'GOLD') { 
+                ctx.save(); 
+                ctx.shadowColor = "#FFD700"; 
+                ctx.shadowBlur = 25; 
+                ctx.fillText(obj.visual, obj.x, obj.y); 
+                ctx.restore(); 
+            } else { 
+                ctx.fillText(obj.visual, obj.x, obj.y); 
+            }
+            
             ctx.globalAlpha = 1.0;
         });
 
