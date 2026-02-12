@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>둥둥그라운드: 밸런스 패치 완료</title>
+    <title>둥둥그라운드: 부드러운 버전</title>
     <style>
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
         body { margin: 0; padding: 0; background-color: #333; font-family: 'Pretendard', sans-serif; overflow: hidden; touch-action: none; user-select: none; display: flex; justify-content: center; align-items: center; height: 100vh; }
         #game-wrapper { position: relative; width: 100%; max-width: 500px; height: 100%; max-height: 900px; background: linear-gradient(to bottom, #4FABFF 0%, #89CFF0 60%, #8BC34A 100%); overflow: hidden; box-shadow: 0 0 30px rgba(0,0,0,0.5); }
+        /* 캔버스 이미지 렌더링 속성 제거 (기본값: 부드러움) */
         canvas { display: block; width: 100%; height: 100%; }
         .ui-top { position: absolute; top: 0; left: 0; width: 100%; padding: 15px 20px; box-sizing: border-box; display: flex; justify-content: space-between; align-items: flex-start; pointer-events: none; z-index: 10; }
         .hud-box { background: rgba(0, 0, 0, 0.5); color: #fff; padding: 8px 16px; border-radius: 20px; font-size: 16px; font-weight: bold; display: flex; flex-direction: column; align-items: center; backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
@@ -19,6 +20,7 @@
         #center-msg p { font-size: 16px; margin-top: 10px; font-weight: 500; line-height: 1.5; }
         #result-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; display: none; animation: fadeIn 0.3s forwards; }
         .card { background: white; width: 85%; padding: 30px; border-radius: 25px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .score-label { color: #666; font-size: 18px; margin-top: 10px; }
         .score-big { font-size: 56px; font-weight: 900; color: #D1180B; margin: 5px 0 20px 0; }
         .btn { background: #FEE500; border: none; padding: 15px 40px; font-size: 22px; font-weight: bold; border-radius: 30px; cursor: pointer; box-shadow: 0 4px 0 #C9B000; transition: transform 0.1s; }
         #damage-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(255, 0, 0, 0.4); opacity: 0; pointer-events: none; z-index: 5; transition: opacity 0.1s; }
@@ -43,7 +45,7 @@
     <canvas id="gameCanvas"></canvas>
     <div id="center-msg">
         <h1>TOUCH TO TURN</h1>
-        <p>터치로 방향 전환!<br>📦보급상자를 싹쓸이하세요!<br>🍠✨<strong>황금 고구마는 대박 찬스!</strong></p>
+        <p>터치로 방향 전환!<br>📦상자는 점수 / 🐦새는 감점<br>✨<strong>황금 고구마는 대박 찬스!</strong></p>
     </div>
     <div id="result-screen">
         <div class="card">
@@ -85,8 +87,12 @@
     let shakeTimer = 0; 
 
     function resize() {
-        canvas.width = canvas.parentElement.clientWidth;
-        canvas.height = canvas.parentElement.clientHeight;
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        ctx.scale(dpr, dpr);
+        // ctx.imageSmoothingEnabled = false; // <-- 이 줄을 삭제하거나 주석 처리했습니다.
     }
     window.addEventListener('resize', resize);
     resize();
@@ -101,13 +107,11 @@
     wrapper.addEventListener('touchstart', handleInput, {passive: false});
 
     function spawnCloud(initialY = -100) {
-        clouds.push({ x: Math.random() * canvas.width, y: initialY, size: Math.random() * 40 + 40, speedScale: Math.random() * 0.5 + 0.5 });
+        clouds.push({ x: Math.random() * 500, y: initialY, size: Math.random() * 40 + 40, speedScale: Math.random() * 0.5 + 0.5 });
     }
 
     function spawnObject() {
-        const center = canvas.width / 2;
-        const range = canvas.width * 0.95; 
-        const x = center + (Math.random() * range - range/2);
+        const x = Math.random() * 450 + 25;
         const rand = Math.random();
         let type, visual, value;
 
@@ -115,7 +119,7 @@
         else if (rand < 0.76) { type = 'CRATE'; visual = '📦'; value = 100; } 
         else { type = 'BAD'; visual = Math.random() < 0.5 ? '🐦' : '🚁'; value = -200; }
 
-        objects.push({ x: x, y: canvas.height + 50, type: type, visual: visual, value: value, hit: false, scale: 1, transformed: false });
+        objects.push({ x: x, y: 950, type: type, visual: visual, value: value, hit: false, scale: 1, transformed: false });
     }
 
     function showFloatingText(x, y, text, color) {
@@ -134,19 +138,23 @@
     }
 
     function drawPlayer() {
-        const cx = canvas.width / 2;
-        const cy = canvas.height * 0.25; 
+        const rect = canvas.getBoundingClientRect();
+        const cx = rect.width / 2;
+        const cy = rect.height * 0.25; 
+        
         ctx.save();
         if (shakeTimer > 0) { ctx.translate((Math.random()-0.5)*10, (Math.random()-0.5)*10); shakeTimer--; }
         ctx.translate(cx, cy);
+        ctx.translate(0, Math.sin(frameCount * 0.1) * 3);
         ctx.rotate(playerDir * 0.15);
         ctx.scale(playerDir, 1);
 
-        // ★ 춘식이 크기: 이전 크기에서 20% 축소 적용
         const baseSize = 130;
-        const imgSize = baseSize * 1.04; // (기존 1.3에서 20% 감소된 수치)
+        const imgSize = baseSize * 1.04; 
 
         if (playerImage.complete) {
+            // 이미지 그릴 때도 부드럽게 설정 (기본값)
+            // ctx.imageSmoothingEnabled = true; // 명시적으로 적어도 되지만 기본값이 true입니다.
             ctx.drawImage(playerImage, -imgSize/2, -imgSize/2, imgSize, imgSize);
         }
         ctx.restore();
@@ -156,7 +164,7 @@
 
     function resetGame() {
         distance = TOTAL_DISTANCE; playerDir = 1; objects = []; clouds = []; floatingTexts = []; score = 0;
-        for(let i=0; i<15; i++) spawnCloud(Math.random() * canvas.height);
+        for(let i=0; i<15; i++) spawnCloud(Math.random() * 900);
         gameState = 'READY'; elResult.style.display = 'none'; elMsg.style.opacity = 1;
         elAlt.innerText = TOTAL_DISTANCE + "m"; elScore.innerText = "0";
         draw();
@@ -165,59 +173,65 @@
     function update() {
         if(gameState !== 'PLAYING') return;
         frameCount++;
-        distance -= DESCENT_SPEED * 0.1;
+        distance -= DESCENT_SPEED * 0.05;
         if(distance <= 0) { distance = 0; gameOver(); return; }
         if(frameCount % SPAWN_INTERVAL === 0) spawnObject();
-        if(frameCount % 20 === 0) spawnCloud(canvas.height + 50);
+        if(frameCount % 20 === 0) spawnCloud(950);
         const bgMoveX = -playerDir * LATERAL_SPEED * 0.5; 
-        for(let i = clouds.length - 1; i >= 0; i--) {
-            let c = clouds[i]; c.y -= DESCENT_SPEED * c.speedScale; c.x += bgMoveX * c.speedScale;
+        clouds.forEach((c, i) => {
+            c.y -= DESCENT_SPEED; c.x += bgMoveX * c.speedScale;
             if(c.y < -100) clouds.splice(i, 1);
-        }
+        });
         const obsMoveX = -playerDir * LATERAL_SPEED;
-        for(let i = objects.length - 1; i >= 0; i--) {
-            let obj = objects[i]; obj.y -= DESCENT_SPEED; obj.x += obsMoveX;
+        const rect = canvas.getBoundingClientRect();
+        const px = rect.width / 2;
+        const py = rect.height * 0.25;
+        objects.forEach((obj, i) => {
+            obj.y -= DESCENT_SPEED; obj.x += obsMoveX;
             if(obj.type === 'GOLD' || obj.transformed) { obj.scale = obj.transformed ? obj.scale + (1 - obj.scale) * 0.1 : 1 + Math.sin(frameCount * 0.2) * 0.2; }
-            if(obj.y < -100) { objects.splice(i, 1); continue; }
+            if(obj.y < -100) { objects.splice(i, 1); return; }
             if(!obj.hit) {
-                const hitDist = 45; 
-                const dist = Math.sqrt(Math.pow(canvas.width/2 - obj.x, 2) + Math.pow(canvas.height*0.25 - obj.y, 2));
-                if(dist < hitDist) {
+                const dx = px - obj.x; const dy = py - obj.y; const dist = Math.sqrt(dx*dx + dy*dy);
+                if(dist < 55) {
                     obj.hit = true; score += obj.value; if(score < 0) score = 0;
-                    if (obj.type === 'BAD') { shakeTimer = 10; elDamage.style.opacity = 0.6; setTimeout(()=> elDamage.style.opacity = 0, 100); showFloatingText(canvas.width/2, canvas.height*0.25 - 60, "-200", "#FF4444"); }
-                    else if (obj.type === 'GOLD') { triggerGoldEffect(); showFloatingText(canvas.width/2, canvas.height*0.25 - 60, "JACKPOT!", "#FFD700"); objects.splice(i, 1); }
-                    else { showFloatingText(canvas.width/2, canvas.height*0.25 - 60, "+100", "#8BC34A"); objects.splice(i, 1); }
+                    if (obj.type === 'BAD') { shakeTimer = 10; elDamage.style.opacity = 0.6; setTimeout(()=> elDamage.style.opacity = 0, 100); showFloatingText(px, py - 60, "-200", "#FF4444"); }
+                    else if (obj.type === 'GOLD') { triggerGoldEffect(); showFloatingText(px, py - 60, "JACKPOT!", "#FFD700"); objects.splice(i, 1); }
+                    else { showFloatingText(px, py - 60, "+100", "#8BC34A"); objects.splice(i, 1); }
                 }
             }
-        }
-        for(let i = floatingTexts.length - 1; i >= 0; i--) { let ft = floatingTexts[i]; ft.life--; ft.offsetY -= 2; if(ft.life <= 0) floatingTexts.splice(i, 1); }
+        });
+        floatingTexts.forEach((ft, i) => { ft.life--; ft.offsetY -= 2; if(ft.life <= 0) floatingTexts.splice(i, 1); });
         elAlt.innerText = Math.floor(distance) + "m"; elScore.innerText = score.toLocaleString();
     }
 
     function draw() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const rect = canvas.getBoundingClientRect();
+        ctx.clearRect(0, 0, rect.width, rect.height);
+        
+        // 전체적으로 부드러운 렌더링 사용
+        // ctx.imageSmoothingEnabled = true; // 기본값이라 생략 가능
+
         ctx.fillStyle = 'rgba(255,255,255,0.3)';
         clouds.forEach(c => { ctx.beginPath(); ctx.arc(c.x, c.y, c.size, 0, Math.PI*2); ctx.fill(); });
         ctx.textAlign = "center"; ctx.textBaseline = "middle";
         objects.forEach(obj => {
             if(obj.hit && obj.type === 'BAD') ctx.globalAlpha = 0.5;
-            // ★ 헬기 크기: 기존보다 20% 추가 확대 적용
             let fontSize = 36;
-            if (obj.visual === '🚁') fontSize *= 1.8; // (기존 1.5에서 20% 추가 증가)
+            if (obj.visual === '🚁') fontSize *= 1.8;
             else if (obj.type === 'BAD') fontSize *= 1.5;
             else fontSize *= 1.15;
-            ctx.font = (fontSize * obj.scale) + "px sans-serif";
+            ctx.font = `bold ${fontSize * obj.scale}px sans-serif`;
             if(obj.type === 'GOLD') { ctx.save(); ctx.shadowColor = "#FFD700"; ctx.shadowBlur = 25; ctx.fillText(obj.visual, obj.x, obj.y); ctx.restore(); }
             else { ctx.fillText(obj.visual, obj.x, obj.y); }
             ctx.globalAlpha = 1.0;
         });
         if(distance < 150) {
-            const gy = canvas.height * 0.25 + (distance * 10);
-            ctx.fillStyle = '#4CAF50'; ctx.fillRect(0, gy, canvas.width, canvas.height);
-            ctx.font = '60px sans-serif'; ctx.fillText('🏁', canvas.width*0.5, gy+60);
+            const gy = rect.height * 0.25 + (distance * 10);
+            ctx.fillStyle = '#4CAF50'; ctx.fillRect(0, gy, rect.width, rect.height);
+            ctx.font = '60px sans-serif'; ctx.fillText('🏁', rect.width*0.5, gy+60);
         }
         drawPlayer();
-        floatingTexts.forEach(ft => { ctx.save(); ctx.globalAlpha = ft.life / 30; ctx.fillStyle = ft.color; ctx.font = "bold 30px Pretendard"; ctx.strokeStyle = "white"; ctx.lineWidth = 3; ctx.strokeText(ft.text, ft.x, ft.y + ft.offsetY); ctx.fillText(ft.text, ft.x, ft.y + ft.offsetY); ctx.restore(); });
+        floatingTexts.forEach(ft => { ctx.save(); ctx.globalAlpha = ft.life / 30; ctx.fillStyle = ft.color; ctx.font = "bold 24px Pretendard"; ctx.strokeStyle = "white"; ctx.lineWidth = 3; ctx.strokeText(ft.text, ft.x, ft.y + ft.offsetY); ctx.fillText(ft.text, ft.x, ft.y + ft.offsetY); ctx.restore(); });
     }
 
     function loop() { update(); draw(); requestAnimationFrame(loop); }
