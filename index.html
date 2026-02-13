@@ -2,295 +2,307 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>둥둥그라운드: 투명화 완전 해결</title>
+    <meta name="viewport" content="width=393, height=852, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>둥둥그라운드 v1.6.2.2 - 표정 시간 조정</title>
     <style>
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
         body { margin: 0; padding: 0; background-color: #333; font-family: 'Pretendard', sans-serif; overflow: hidden; touch-action: none; user-select: none; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        #game-wrapper { position: relative; width: 100%; max-width: 500px; height: 100%; max-height: 900px; background: linear-gradient(to bottom, #4FABFF 0%, #89CFF0 60%, #8BC34A 100%); overflow: hidden; box-shadow: 0 0 30px rgba(0,0,0,0.5); }
-        
-        canvas { 
-            display: block; width: 100%; height: 100%;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        .ui-top { position: absolute; top: 0; left: 0; width: 100%; padding: 15px 20px; box-sizing: border-box; display: flex; justify-content: space-between; align-items: flex-start; pointer-events: none; z-index: 10; }
-        .hud-box { background: rgba(0, 0, 0, 0.5); color: #fff; padding: 8px 16px; border-radius: 20px; font-size: 16px; font-weight: bold; display: flex; flex-direction: column; align-items: center; backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-        .hud-label { font-size: 12px; opacity: 0.8; margin-bottom: 2px; }
-        .hud-value { font-size: 24px; color: #fff; text-shadow: 1px 1px 0 #000; }
-        #score-box .hud-value { color: #FFD700; font-size: 28px; }
-        #center-msg { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: white; width: 100%; pointer-events: none; z-index: 20; text-shadow: 0 2px 5px rgba(0,0,0,0.5); transition: opacity 0.3s; }
-        #center-msg h1 { font-size: 40px; margin: 0; color: #FEE500; -webkit-text-stroke: 1px #333; }
-        #center-msg p { font-size: 16px; margin-top: 10px; font-weight: 500; line-height: 1.5; }
-        #result-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; display: none; animation: fadeIn 0.3s forwards; }
-        .card { background: white; width: 85%; padding: 30px; border-radius: 25px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .score-big { font-size: 56px; font-weight: 900; color: #D1180B; margin: 5px 0 20px 0; }
-        .btn { background: #FEE500; border: none; padding: 15px 40px; font-size: 22px; font-weight: bold; border-radius: 30px; cursor: pointer; box-shadow: 0 4px 0 #C9B000; transition: transform 0.1s; }
-        #damage-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(255, 0, 0, 0.4); opacity: 0; pointer-events: none; z-index: 5; transition: opacity 0.1s; }
-        #flash-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: white; opacity: 0; pointer-events: none; z-index: 6; transition: opacity 0.1s; }
+        #game-container { position: relative; width: 393px; height: 852px; overflow: hidden; background: #C0EEFE; box-shadow: 0 0 50px rgba(0,0,0,0.5); }
+        canvas { display: block; width: 100%; height: 100%; outline: none; -webkit-tap-highlight-color: transparent; }
+        #hud { position: absolute; top: 0; left: 0; width: 100%; z-index: 50; display: none; pointer-events: none; }
+        .nav-bar img { width: 100%; display: block; }
+        .hud-info { width: 100%; padding: 15px 20px; box-sizing: border-box; display: flex; justify-content: space-between; align-items: flex-start; }
+        .dist-val-wrap { font-size: 32px; font-weight: 900; color: #000; letter-spacing: -1px; line-height: 1; }
+        .combined-badge { background: #fff; padding: 6px 14px; border-radius: 30px; display: flex; align-items: center; gap: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .life-icon { width: 30px; height: 30px; object-fit: contain; }
+        .score-icon { width: 30px; height: 30px; object-fit: contain; margin-right: 6px; }
+        #life-container { display: flex; gap: 4px; padding-left: 5px; } 
+        #result-screen { position: absolute; inset: 0; background: rgba(0,0,0,0.8); z-index: 200; display: none; flex-direction: column; justify-content: center; align-items: center; color: white; text-align: center; }
     </style>
 </head>
 <body>
 
-<div id="game-wrapper">
-    <div id="damage-overlay"></div>
-    <div id="flash-overlay"></div>
-    <div class="ui-top">
-        <div class="hud-box">
-            <span class="hud-label">남은 거리</span>
-            <span class="hud-value" id="alt-display">1500m</span>
-        </div>
-        <div class="hud-box" id="score-box">
-            <span class="hud-label">SCORE</span>
-            <span class="hud-value" id="score-display">0</span>
+<div id="game-container">
+    <div id="main-screen" style="position:absolute; inset:0; background:url('bg_main.png') no-repeat center center / cover; z-index:100; display:flex; justify-content:center;">
+        <img src="btn_start.png" id="start-btn" style="position:absolute; bottom:8%; width:85%; cursor:pointer;" onclick="forceStart()">
+    </div>
+    
+    <div id="hud">
+        <div class="nav-bar"><img src="ingae_Navigation.png"></div>
+        <div class="hud-info">
+            <div class="dist-group">
+                <span style="font-size:16px; font-weight:bold; color:#555;">고도</span>
+                <div class="dist-val-wrap"><span id="dist-val">1500</span>m</div>
+            </div>
+            <div class="combined-badge">
+                <div class="score-item" style="display:flex; align-items:center;">
+                    <img src="create_s.png" class="score-icon">
+                    <span id="score-val" style="font-size:22px; font-weight:800;">0</span>
+                </div>
+                <div id="life-container">
+                    <img id="life-0" src="mini_life.png" class="life-icon">
+                    <img id="life-1" src="mini_life.png" class="life-icon">
+                    <img id="life-2" src="mini_life.png" class="life-icon">
+                </div>
+            </div>
         </div>
     </div>
+
     <canvas id="gameCanvas"></canvas>
-    <div id="center-msg">
-        <h1>TOUCH TO TURN</h1>
-        <p>터치로 방향 전환!<br>📦상자는 점수 / 🐦새는 감점<br>✨<strong>황금 고구마는 대박 찬스!</strong></p>
-    </div>
+
     <div id="result-screen">
-        <div class="card">
-            <h2>작전 완료!</h2>
-            <p>최종 점수</p>
-            <div class="score-big" id="res-score">0</div>
-            <button class="btn" onclick="resetGame()">다시 도전</button>
-        </div>
+        <h1 id="result-title" style="font-size: 48px; font-weight: 900;">작전 완료!</h1>
+        <p>획득한 보급: <span id="final-score">0</span>개</p>
+        <img src="btn_start.png" style="width: 70%; cursor:pointer;" onclick="location.reload()">
     </div>
 </div>
 
 <script>
     const canvas = document.getElementById('gameCanvas');
+    const WIDTH = 393 * 2, HEIGHT = 852 * 2;
+    canvas.width = WIDTH; canvas.height = HEIGHT;
     const ctx = canvas.getContext('2d');
-    const elAlt = document.getElementById('alt-display');
-    const elScore = document.getElementById('score-display');
-    const elMsg = document.getElementById('center-msg');
-    const elResult = document.getElementById('result-screen');
-    const elResScore = document.getElementById('res-score');
-    const elDamage = document.getElementById('damage-overlay');
-    const elFlash = document.getElementById('flash-overlay');
 
-    const playerImage = new Image();
-    playerImage.src = 'dong_chun.png';
+    const imgs = {};
+    const imgList = [
+        'player', 'dong_chun.png', 
+        'face_happy', 'dong_chun_happy.png', 
+        'face_miss', 'dong_chun_miss.png', 
+        'crate', 'create_m.png', 'gold', 'gold.png', 'heli', 'heli.png', 'cloud1', 'cloud_1.png', 'cloud2', 'cloud_2.png', 'cloud3', 'cloud_3.png', 'land', '03_ingame_land.png', 'effect', 'effect_pickup.png', 'damage', 'damege.png', 'mountain', 'surface_mountain.png', 'grass', 'surface_grass.png', 'target', 'surface_target.png'
+    ];
+    imgList.forEach((val, i) => { if(i % 2 === 0) { imgs[val] = new Image(); imgs[val].src = imgList[i+1]; } });
 
-    const TOTAL_DISTANCE = 1500; 
-    const DESCENT_SPEED = 8;     
-    const LATERAL_SPEED = 7;     
-    const SPAWN_INTERVAL = 2; 
+    let state = 'MAIN', frame = 0, dist = 1500, score = 0, lives = 3;
+    const pX = WIDTH / 2, pY = HEIGHT * 0.28;
+    let pDir = 1, objects = [], clouds = [], fx = [];
+    let stopSpawning = false, mountainX = 0, grassX = 0, hitShakeFrame = 0;
     
-    let gameState = 'READY'; 
-    let distance = TOTAL_DISTANCE;
-    let score = 0;
-    let playerDir = 1; 
-    let frameCount = 0;
-    let objects = []; 
-    let clouds = [];
-    let floatingTexts = []; 
-    let shakeTimer = 0; 
+    // 표정 관리 변수
+    let faceTimer = 0;
+    let currentFace = 'normal';
 
-    function resize() {
-        const dpr = window.devicePixelRatio || 1;
-        const rect = canvas.getBoundingClientRect();
-        canvas.width = rect.width * dpr;
-        canvas.height = rect.height * dpr;
-        ctx.scale(dpr, dpr);
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-    }
-    window.addEventListener('resize', resize);
-    resize();
+    let flashFrame = 0, flashColor = "rgba(255, 0, 0, 0.3)";
+    let currentRotation = 0, rotVel = 0;
+    const targetRotationLeft = 0, targetRotationRight = -27 * Math.PI / 180;
+    const springK = 0.18, friction = 0.75; 
+    const GLOBAL_SPEED = 14; 
+    let landY = HEIGHT + 1000, spawnDeck = [];
 
-    const wrapper = document.getElementById('game-wrapper');
-    const handleInput = (e) => {
-        if(e.cancelable) e.preventDefault();
-        if(gameState === 'READY') { gameState = 'PLAYING'; elMsg.style.opacity = 0; return; }
-        if(gameState === 'PLAYING') { playerDir *= -1; }
-    };
-    wrapper.addEventListener('mousedown', handleInput);
-    wrapper.addEventListener('touchstart', handleInput, {passive: false});
-
-    function spawnCloud(initialY = -100) {
-        clouds.push({ x: Math.random() * 500, y: initialY, size: Math.random() * 40 + 40, speedScale: Math.random() * 0.5 + 0.5 });
+    function forceStart() {
+        document.getElementById('main-screen').style.display = 'none';
+        document.getElementById('hud').style.display = 'block';
+        state = 'PLAY';
+        for(let j=0; j<5; j++) spawnCloud(Math.random() * HEIGHT);
+        loop();
     }
 
-    function spawnObject() {
-        const x = Math.random() * 450 + 25;
-        const rand = Math.random();
-        let type, visual, value;
-
-        if (rand < 0.01) { type = 'GOLD'; visual = '🍠✨'; value = 500; } 
-        else if (rand < 0.76) { type = 'CRATE'; visual = '📦'; value = 100; } 
-        else { type = 'BAD'; visual = Math.random() < 0.5 ? '🐦' : '🚁'; value = -200; }
-
-        objects.push({ x: x, y: 950, type: type, visual: visual, value: value, hit: false, scale: 1, transformed: false });
+    function refillSpawnDeck() {
+        let newItems = [
+            'GOLD', 'BAD', 'BAD', 'BAD', 'BAD', 'BAD', 'BAD', 'BAD', 'BAD', 'BAD', 'BAD', 
+            'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 
+            'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 
+            'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE',
+            'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE',
+            'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE'
+        ];
+        for (let i = newItems.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [newItems[i], newItems[j]] = [newItems[j], newItems[i]]; }
+        spawnDeck = [...spawnDeck, ...newItems];
     }
 
-    function showFloatingText(x, y, text, color) {
-        floatingTexts.push({ x: x, y: y, text: text, color: color, life: 30, offsetY: 0 });
+    function spawnCloud(y) {
+        const depth = Math.floor(Math.random() * 2);
+        const baseScale = depth === 0 ? 0.39 : 0.26;
+        clouds.push({ x: Math.random() * WIDTH, y: y || HEIGHT + 150, img: imgs['cloud'+(Math.floor(Math.random()*3)+1)], scale: baseScale * 1.3, alpha: depth === 0 ? 0.8 : 0.5, speed: depth === 0 ? 3.5 : 1.8, depth });
     }
 
-    function triggerGoldEffect() {
-        elFlash.style.opacity = 0.8;
-        setTimeout(() => elFlash.style.opacity = 0, 300);
-        objects.forEach(obj => {
-            if (obj.type === 'BAD' && !obj.hit) {
-                obj.type = 'CRATE'; obj.visual = '📦'; obj.value = 100; obj.scale = 1.5; obj.transformed = true;
-                showFloatingText(obj.x, obj.y - 60, "변신!", "#FFD700");
-            }
-        });
-    }
-
-    function drawPlayer() {
-        const rect = canvas.getBoundingClientRect();
-        const cx = rect.width / 2;
-        const cy = rect.height * 0.25; 
-        
-        ctx.save();
-        if (shakeTimer > 0) { ctx.translate((Math.random()-0.5)*10, (Math.random()-0.5)*10); shakeTimer--; }
-        ctx.translate(cx, cy);
-        ctx.translate(0, Math.sin(frameCount * 0.1) * 3);
-        ctx.rotate(playerDir * 0.15);
-        ctx.scale(playerDir, 1);
-
-        const baseSize = 130;
-        const imgSize = baseSize * 1.04; 
-
-        if (playerImage.complete) {
-            ctx.drawImage(playerImage, -imgSize/2, -imgSize/2, imgSize, imgSize);
+    function spawnObj() {
+        if(stopSpawning) return;
+        if(spawnDeck.length < 5) refillSpawnDeck();
+        const type = spawnDeck.shift(); 
+        let x = Math.random() * (WIDTH - 100) + 50; 
+        const spawnY = HEIGHT + 200;
+        if(type === 'BAD') {
+            const tooClose = objects.some(o => o.type === 'BAD' && Math.abs(o.x - x) < 180); 
+            if(tooClose) x = (x + 250) % (WIDTH - 100) + 50;
+            objects.push({ x, y: spawnY, type: 'BAD', img: imgs.heli });
+        } else if(type === 'GOLD') {
+            objects.push({ x, y: spawnY, type: 'GOLD', img: imgs.gold });
+        } else {
+            objects.push({ x, y: spawnY, type: 'CRATE', img: imgs.crate });
+            if(Math.random() > 0.75) objects.push({ x: (x + 150) % (WIDTH - 100) + 50, y: spawnY + 80, type: 'CRATE', img: imgs.crate });
         }
-        ctx.restore();
     }
 
-    function gameOver() { gameState = 'END'; elResult.style.display = 'flex'; elResScore.innerText = score.toLocaleString(); }
-
-    function resetGame() {
-        distance = TOTAL_DISTANCE; playerDir = 1; objects = []; clouds = []; floatingTexts = []; score = 0;
-        for(let i=0; i<15; i++) spawnCloud(Math.random() * 900);
-        gameState = 'READY'; elResult.style.display = 'none'; elMsg.style.opacity = 1;
-        elAlt.innerText = TOTAL_DISTANCE + "m"; elScore.innerText = "0";
-        draw();
+    function triggerGoldFever() {
+        // 황금고구마 획득 시 표정 변화 (1.3초 = 78프레임)
+        currentFace = 'happy';
+        faceTimer = 78;
+        objects.forEach(o => { if(o.type === 'CRATE') score++; fx.push({ x: o.x, y: o.y, img: imgs.effect, life: 108, follow: false, vx: 0, vy: -GLOBAL_SPEED, type: 'PICKUP' }); });
+        objects = [];
     }
 
-    function update() {
-        if(gameState !== 'PLAYING') return;
-        frameCount++;
-        distance -= DESCENT_SPEED * 0.05;
-        if(distance <= 0) { distance = 0; gameOver(); return; }
-        if(frameCount % SPAWN_INTERVAL === 0) spawnObject();
-        if(frameCount % 20 === 0) spawnCloud(950);
-        const bgMoveX = -playerDir * LATERAL_SPEED * 0.5; 
-        clouds.forEach((c, i) => {
-            c.y -= DESCENT_SPEED; c.x += bgMoveX * c.speedScale;
-            if(c.y < -100) clouds.splice(i, 1);
-        });
-        const obsMoveX = -playerDir * LATERAL_SPEED;
-        const rect = canvas.getBoundingClientRect();
-        const px = rect.width / 2;
-        const py = rect.height * 0.25;
-        objects.forEach((obj, i) => {
-            obj.y -= DESCENT_SPEED; obj.x += obsMoveX;
-            if(obj.type === 'GOLD' || obj.transformed) { obj.scale = obj.transformed ? obj.scale + (1 - obj.scale) * 0.1 : 1 + Math.sin(frameCount * 0.2) * 0.2; }
-            if(obj.y < -100) { objects.splice(i, 1); return; }
-            if(!obj.hit) {
-                const dx = px - obj.x; const dy = py - obj.y; const dist = Math.sqrt(dx*dx + dy*dy);
-                if(dist < 55) {
-                    obj.hit = true; score += obj.value; if(score < 0) score = 0;
-                    if (obj.type === 'BAD') { shakeTimer = 10; elDamage.style.opacity = 0.6; setTimeout(()=> elDamage.style.opacity = 0, 100); showFloatingText(px, py - 60, "-200", "#FF4444"); }
-                    else if (obj.type === 'GOLD') { triggerGoldEffect(); showFloatingText(px, py - 60, "JACKPOT!", "#FFD700"); objects.splice(i, 1); }
-                    else { showFloatingText(px, py - 60, "+100", "#8BC34A"); objects.splice(i, 1); }
+    function updateLifeUI() { for(let i=0; i<3; i++) { document.getElementById('life-' + i).src = (i < lives) ? 'mini_life.png' : 'mini_death.png'; } }
+
+    function gameOver(title) {
+        state = 'END';
+        document.getElementById('result-title').innerText = title;
+        document.getElementById('final-score').innerText = score;
+        document.getElementById('result-screen').style.display = 'flex';
+    }
+
+    canvas.addEventListener('mousedown', () => { if(state === 'PLAY') pDir *= -1; });
+    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); if(state === 'PLAY') pDir *= -1; }, {passive: false});
+
+    function loop() {
+        if(state === 'END') return;
+        frame++; 
+        const scrollSpeed = (state === 'LANDED') ? 0 : 10; 
+        let targetRot = (pDir === 1) ? targetRotationLeft : targetRotationRight;
+        let force = (targetRot - currentRotation) * springK;
+        rotVel = (rotVel + force) * friction;
+        currentRotation += rotVel;
+
+        if(state === 'PLAY') {
+            dist -= 1.41; 
+            mountainX -= pDir * 1.8; 
+            grassX -= pDir * scrollSpeed;
+        }
+
+        document.getElementById('dist-val').innerText = Math.max(0, Math.floor(dist));
+        document.getElementById('score-val').innerText = score;
+
+        const targetArrivalY = pY + 140 - 248;
+        if(dist < 150 && state === 'PLAY') {
+            if(landY > targetArrivalY) landY -= GLOBAL_SPEED; 
+            else {
+                landY = targetArrivalY;
+                if(dist <= 5) { 
+                    dist = 0; state = 'LANDED'; 
+                    setTimeout(() => { if(state !== 'END') gameOver("작전 완료!"); }, 500); 
                 }
             }
-        });
-        floatingTexts.forEach((ft, i) => { ft.life--; ft.offsetY -= 2; if(ft.life <= 0) floatingTexts.splice(i, 1); });
-        elAlt.innerText = Math.floor(distance) + "m"; elScore.innerText = score.toLocaleString();
-    }
-
-    // ★★★ 여기가 핵심 수정된 draw 함수입니다 ★★★
-    function draw() {
-        const rect = canvas.getBoundingClientRect();
-        // 1. 화면 전체 지우기
-        ctx.clearRect(0, 0, rect.width, rect.height);
-        
-        // 2. 구름 그리기 (★완벽 격리★)
-        // save()와 restore()로 감싸서 투명도(0.3)가 절대로 밖으로 못 나가게 가둡니다.
-        ctx.save(); 
-        ctx.globalAlpha = 0.3; // 여기서만 투명하게
-        ctx.fillStyle = '#ffffff';
-        clouds.forEach(c => { 
-            ctx.beginPath(); 
-            ctx.arc(c.x, c.y, c.size, 0, Math.PI*2); 
-            ctx.fill(); 
-        });
-        ctx.restore(); // 여기서 투명도 설정 자동 폐기 -> 다시 불투명(1.0)으로 복구됨
-
-        // 3. 아이템 그리기 (이제 무조건 찐하게 나옵니다)
-        ctx.textAlign = "center"; 
-        ctx.textBaseline = "middle";
-        ctx.fillStyle = '#000000'; // 기본 검정 (이모지엔 영향 없지만 안전장치)
-        
-        // 안전을 위해 globalAlpha 강제 초기화
-        ctx.globalAlpha = 1.0; 
-
-        objects.forEach(obj => {
-            // 맞았을 때만 반투명하게 하기 위해 여기서도 격리 사용
-            ctx.save(); 
-            
-            if(obj.hit && obj.type === 'BAD') {
-                ctx.globalAlpha = 0.5;
-            } else {
-                ctx.globalAlpha = 1.0; // 평소엔 100% 불투명
-            }
-
-            let fontSize = 36;
-            if (obj.visual === '🚁') fontSize *= 1.8;
-            else if (obj.type === 'BAD') fontSize *= 1.5;
-            else fontSize *= 1.15;
-            
-            // 모바일 투명 버그 방지를 위해 폰트 단순화 + bold 제거
-            ctx.font = `${fontSize * obj.scale}px sans-serif`;
-            
-            if(obj.type === 'GOLD') { 
-                ctx.shadowColor = "#FFD700"; 
-                ctx.shadowBlur = 25; 
-                ctx.fillText(obj.visual, obj.x, obj.y); 
-            } else { 
-                // 그림자 효과 없이 깔끔하게 출력
-                ctx.shadowBlur = 0; 
-                ctx.fillText(obj.visual, obj.x, obj.y); 
-            }
-            
-            ctx.restore(); // 아이템 하나 그릴 때 쓴 효과 폐기
-        });
-
-        // 4. 바닥 그리기
-        if(distance < 150) {
-            const gy = rect.height * 0.25 + (distance * 10);
-            ctx.fillStyle = '#4CAF50'; 
-            ctx.fillRect(0, gy, rect.width, rect.height);
-            ctx.font = '60px sans-serif'; 
-            ctx.fillText('🏁', rect.width*0.5, gy+60);
+            stopSpawning = true;
         }
 
-        // 5. 플레이어 그리기
-        drawPlayer();
+        if(state === 'PLAY') {
+            const spawnInterval = 7 + Math.floor(Math.random() * 4);
+            if(frame % spawnInterval === 0) spawnObj();
+            if(frame % 80 === 0) spawnCloud();
+        }
 
-        // 6. 점수 텍스트 그리기
-        floatingTexts.forEach(ft => { 
-            ctx.save(); 
-            ctx.globalAlpha = ft.life / 30; 
-            ctx.fillStyle = ft.color; 
-            ctx.font = "bold 24px Pretendard"; 
-            ctx.strokeStyle = "white"; 
-            ctx.lineWidth = 3; 
-            ctx.strokeText(ft.text, ft.x, ft.y + ft.offsetY); 
-            ctx.fillText(ft.text, ft.x, ft.y + ft.offsetY); 
-            ctx.restore(); 
+        clouds.forEach((c, i) => { 
+            c.y -= (state === 'LANDED') ? 0 : c.speed; 
+            c.x -= (state === 'LANDED') ? 0 : pDir * c.speed * 0.3; 
+            if(c.y < -350) clouds.splice(i,1); 
         });
+
+        objects.forEach((o, i) => {
+            o.y -= GLOBAL_SPEED; o.x -= pDir * 10;
+            if(o.y < -150) { objects.splice(i, 1); return; } 
+
+            const dx = pX - o.x, dy = pY - o.y;
+            if(state === 'PLAY' && Math.sqrt(dx*dx + dy*dy) < 115) {
+                if(o.type === 'BAD') {
+                    lives--; updateLifeUI(); hitShakeFrame = 10; flashFrame = 10;
+                    
+                    // 헬기 충돌 시 표정 변화 (1.3초 = 78프레임)
+                    currentFace = 'miss';
+                    faceTimer = 78;
+
+                    fx.push({ x: pX, y: pY - 140, img: imgs.damage, life: 40, follow: true, type: 'DAMAGE', scale: 0.8 });
+                    if(lives <= 0) setTimeout(() => { gameOver("작전 실패..."); }, 500);
+                } else if(o.type === 'GOLD') triggerGoldFever();
+                else { score++; fx.push({ x: o.x, y: o.y, img: imgs.effect, life: 108, follow: false, vy: -GLOBAL_SPEED, type: 'PICKUP' }); }
+                objects.splice(i, 1);
+            }
+        });
+
+        fx.forEach((f, i) => { if(f.life > 0) f.life--; else fx.splice(i, 1); if(!f.follow) { f.x -= pDir * 10; f.y += f.vy; if(f.y < -150) fx.splice(i, 1); } });
+        if(hitShakeFrame > 0) hitShakeFrame--;
+        if(flashFrame > 0) flashFrame--; 
+        draw();
+        requestAnimationFrame(loop);
     }
 
-    function loop() { update(); draw(); requestAnimationFrame(loop); }
-    playerImage.onload = () => { resetGame(); loop(); };
+    function draw() {
+        ctx.clearRect(0, 0, WIDTH, HEIGHT);
+        ctx.fillStyle = '#C0EEFE'; ctx.fillRect(0, 0, WIDTH, HEIGHT);
+        
+        clouds.sort((a, b) => b.depth - a.depth).forEach(c => {
+            ctx.save(); ctx.globalAlpha = c.alpha;
+            ctx.drawImage(c.img, c.x - (300*c.scale)/2, c.y, 300*c.scale, 180*c.scale);
+            ctx.restore();
+        });
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, 130, WIDTH, HEIGHT); 
+        ctx.clip();
+
+        if(dist < 150) {
+            if(imgs.mountain.complete) {
+                const mImg = imgs.mountain, mScale = 1.65, mWidth = 600 * mScale, mHeight = 120 * mScale;
+                const mRelX = (mountainX * 1.0) % mWidth;
+                for(let x = -3; x <= 3; x++) ctx.drawImage(mImg, mRelX + (x * mWidth), landY - mHeight, mWidth, mHeight);
+            }
+            if(imgs.grass.complete) {
+                const gImg = imgs.grass, gWidth = WIDTH, gHeight = 185 * 2, relX = (grassX * 1.0) % gWidth;
+                ctx.fillStyle = '#7AC6A6'; ctx.fillRect(0, landY, WIDTH, HEIGHT + 1200);
+                for(let x = -2; x <= 2; x++) ctx.drawImage(gImg, relX + (x * gWidth), landY, gWidth, gHeight);
+            }
+            if(imgs.target.complete) {
+                const tImg = imgs.target, tW = 240, tH = tW * (tImg.naturalHeight / tImg.naturalWidth);
+                ctx.drawImage(tImg, pX - tW/2, landY - tH/2 + 220, tW, tH);
+            }
+        }
+
+        objects.forEach(o => {
+            if(o.type !== 'BAD') {
+                if(o.type === 'GOLD') { ctx.save(); ctx.shadowBlur = 30; ctx.shadowColor = "yellow"; ctx.drawImage(o.img, o.x - 50, o.y, 100, 100); ctx.restore(); }
+                else ctx.drawImage(o.img, o.x - 50, o.y, 100, 100);
+            }
+        });
+        objects.forEach(o => {
+            if(o.type === 'BAD') {
+                const hW = (216 * 1.42) * 0.75, hH = (146 * 1.42) * 0.75;
+                ctx.drawImage(o.img, o.x - hW/2, o.y, hW, hH);
+            }
+        });
+
+        ctx.save();
+        let sX = 0; if(hitShakeFrame > 0) sX = (Math.random() - 0.5) * 25;
+        const floatY = (state === 'PLAY' && dist > 5) ? Math.sin(frame*0.08)*7.5 : 0;
+        ctx.translate(pX + sX, pY + floatY);
+        ctx.rotate(currentRotation); 
+        
+        if(hitShakeFrame % 4 > 1) ctx.globalAlpha = 0.5;
+
+        let playerImg = imgs.player;
+        if(faceTimer > 0) {
+            playerImg = (currentFace === 'happy') ? imgs.face_happy : imgs.face_miss;
+            faceTimer--;
+        }
+
+        if(playerImg && playerImg.complete) {
+            ctx.drawImage(playerImg, -143, -143, 286, 286);
+        }
+        ctx.restore();
+
+        fx.forEach(f => {
+            ctx.save();
+            let opacity = 1.0;
+            const totalLife = 108; const fadeInFrame = 6; const fadeOutFrame = 12;
+            if(f.type === 'PICKUP') { if(f.life > totalLife - fadeInFrame) opacity = (totalLife - f.life) / fadeInFrame; else if(f.life <= fadeOutFrame) opacity = f.life / fadeOutFrame; }
+            ctx.globalAlpha = opacity;
+            const baseW = 140, baseH = 84, drawScale = f.scale || 1.0;
+            ctx.drawImage(f.img, (f.follow ? pX : f.x) - (baseW * drawScale)/2, (f.follow ? pY : f.y) - 100, baseW * drawScale, baseH * drawScale);
+            ctx.restore();
+        });
+        ctx.restore(); 
+
+        if(flashFrame > 0) { ctx.fillStyle = flashColor; ctx.fillRect(0, 0, WIDTH, HEIGHT); }
+    }
+    draw();
 </script>
 </body>
 </html>
