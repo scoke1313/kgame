@@ -3,46 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=393, height=852, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>둥둥그라운드 v1.6.2.2 - 표정 시간 조정</title>
+    <title>둥둥그라운드 v1.6.8.5 - 피버 모드</title>
     <style>
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
         body { margin: 0; padding: 0; background-color: #333; font-family: 'Pretendard', sans-serif; overflow: hidden; touch-action: none; user-select: none; display: flex; justify-content: center; align-items: center; height: 100vh; }
         #game-container { position: relative; width: 393px; height: 852px; overflow: hidden; background: #C0EEFE; box-shadow: 0 0 50px rgba(0,0,0,0.5); }
         canvas { display: block; width: 100%; height: 100%; outline: none; -webkit-tap-highlight-color: transparent; }
+        
+        #main-screen { position: absolute; inset: 0; background: url('bg_main.png') no-repeat center center / cover; z-index: 100; display: flex; justify-content: center; }
+        .main-ui-top { position: absolute; top: 80px; width: 100%; padding: 0 20px; box-sizing: border-box; display: flex; justify-content: space-between; align-items: center; }
+        .main-btn-rank { width: 44px; height: 44px; cursor: pointer; }
+        .total-score-unit { position: relative; width: 142px; height: 44px; display: flex; align-items: center; justify-content: flex-end; }
+        .score-board-bg { position: absolute; right: 0; background: #fff; width: 142px; height: 38px; padding: 0 44px 0 10px; border-radius: 30px; display: flex; align-items: center; gap: 6px; box-sizing: border-box; z-index: 1; }
+        .score-board-bg span { font-size: 18px; font-weight: 600; color: #000; letter-spacing: -0.5px; }
+        .main-btn-exch { width: 44px; height: 44px; cursor: pointer; position: relative; z-index: 2; }
+
         #hud { position: absolute; top: 0; left: 0; width: 100%; z-index: 50; display: none; pointer-events: none; }
         .nav-bar img { width: 100%; display: block; }
-        .hud-info { width: 100%; padding: 15px 20px; box-sizing: border-box; display: flex; justify-content: space-between; align-items: flex-start; }
-        .dist-val-wrap { font-size: 32px; font-weight: 900; color: #000; letter-spacing: -1px; line-height: 1; }
-        .combined-badge { background: #fff; padding: 6px 14px; border-radius: 30px; display: flex; align-items: center; gap: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        .life-icon { width: 30px; height: 30px; object-fit: contain; }
-        .score-icon { width: 30px; height: 30px; object-fit: contain; margin-right: 6px; }
-        #life-container { display: flex; gap: 4px; padding-left: 5px; } 
-        #result-screen { position: absolute; inset: 0; background: rgba(0,0,0,0.8); z-index: 200; display: none; flex-direction: column; justify-content: center; align-items: center; color: white; text-align: center; }
+        .hud-info { width: 100%; padding: 9px 20px 0; box-sizing: border-box; display: flex; justify-content: space-between; align-items: flex-start; }
+        .hud-left { display: flex; align-items: center; gap: 1px; }
+        .hud-left img { width: 28px; height: 28px; object-fit: contain; }
+        .dist-val-wrap { font-size: 36px; font-weight: 800; color: #000; letter-spacing: -1px; line-height: 1; display: flex; align-items: baseline; }
+        .dist-unit { font-size: 20px; font-weight: 700; margin-left: 1px; }
+        .hud-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+        .ingame-score-bg { background: #fff; height: 38px; width: 86px; padding: 0 10px; border-radius: 30px; display: flex; align-items: center; justify-content: space-between; box-sizing: border-box; }
+        .ingame-score-bg img { width: 28px; height: 28px; object-fit: contain; }
+        .ingame-score-bg span { font-size: 18px; font-weight: 600; color: #000; }
+        #life-container { display: flex; gap: 2px; padding-right: 4px; }
+        #life-container img { width: 28px; height: 28px; object-fit: contain; }
+
+        #result-screen { position: absolute; inset: 0; background:rgba(0,0,0,0.8); z-index:200; display:none; flex-direction:column; justify-content:center; align-items:center; color:white; text-align:center; }
     </style>
 </head>
 <body>
 
 <div id="game-container">
-    <div id="main-screen" style="position:absolute; inset:0; background:url('bg_main.png') no-repeat center center / cover; z-index:100; display:flex; justify-content:center;">
-        <img src="btn_start.png" id="start-btn" style="position:absolute; bottom:8%; width:85%; cursor:pointer;" onclick="forceStart()">
+    <div id="main-screen">
+        <div class="main-ui-top">
+            <img src="btn_rank.svg" class="main-btn-rank">
+            <div class="total-score-unit">
+                <div class="score-board-bg">
+                    <img src="create_s.svg" style="width:22px; height:22px;">
+                    <span id="total-accumulated-score">0</span>
+                </div>
+                <img src="btn_exchage.svg" class="main-btn-exch">
+            </div>
+        </div>
+        <img src="btn_start.svg" id="start-btn" style="position:absolute; bottom:8%; width:85%; cursor:pointer;" onclick="forceStart()">
     </div>
     
     <div id="hud">
         <div class="nav-bar"><img src="ingae_Navigation.png"></div>
         <div class="hud-info">
-            <div class="dist-group">
-                <span style="font-size:16px; font-weight:bold; color:#555;">고도</span>
-                <div class="dist-val-wrap"><span id="dist-val">1500</span>m</div>
+            <div class="hud-left">
+                <img src="ico_meter.svg">
+                <div class="dist-val-wrap"><span id="dist-val">1500</span><span class="dist-unit">m</span></div>
             </div>
-            <div class="combined-badge">
-                <div class="score-item" style="display:flex; align-items:center;">
-                    <img src="create_s.png" class="score-icon">
-                    <span id="score-val" style="font-size:22px; font-weight:800;">0</span>
+            <div class="hud-right">
+                <div class="ingame-score-bg">
+                    <img src="create_s.svg">
+                    <span id="score-val">0</span>
                 </div>
                 <div id="life-container">
-                    <img id="life-0" src="mini_life.png" class="life-icon">
-                    <img id="life-1" src="mini_life.png" class="life-icon">
-                    <img id="life-2" src="mini_life.png" class="life-icon">
+                    <img id="life-0" src="mini_life.svg">
+                    <img id="life-1" src="mini_life.svg">
+                    <img id="life-2" src="mini_life.svg">
                 </div>
             </div>
         </div>
@@ -53,39 +78,38 @@
     <div id="result-screen">
         <h1 id="result-title" style="font-size: 48px; font-weight: 900;">작전 완료!</h1>
         <p>획득한 보급: <span id="final-score">0</span>개</p>
-        <img src="btn_start.png" style="width: 70%; cursor:pointer;" onclick="location.reload()">
+        <img src="btn_start.svg" style="width: 70%; cursor:pointer;" onclick="location.reload()">
     </div>
 </div>
 
 <script>
     const canvas = document.getElementById('gameCanvas');
-    const WIDTH = 393 * 2, HEIGHT = 852 * 2;
+    const WIDTH = 393 * 2, HEIGHT = 852 * 2; 
     canvas.width = WIDTH; canvas.height = HEIGHT;
     const ctx = canvas.getContext('2d');
 
+    let totalScore = parseInt(localStorage.getItem('totalSupplyBoxes')) || 0;
+    document.getElementById('total-accumulated-score').innerText = totalScore.toLocaleString();
+
     const imgs = {};
     const imgList = [
-        'player', 'dong_chun.png', 
-        'face_happy', 'dong_chun_happy.png', 
-        'face_miss', 'dong_chun_miss.png', 
-        'crate', 'create_m.png', 'gold', 'gold.png', 'heli', 'heli.png', 'cloud1', 'cloud_1.png', 'cloud2', 'cloud_2.png', 'cloud3', 'cloud_3.png', 'land', '03_ingame_land.png', 'effect', 'effect_pickup.png', 'damage', 'damege.png', 'mountain', 'surface_mountain.png', 'grass', 'surface_grass.png', 'target', 'surface_target.png'
+        'player', 'dong_chun.svg', 'face_happy', 'dong_chun_happy.svg', 'face_miss', 'dong_chun_miss.svg', 
+        'crate', 'create_m.svg', 'gold', 'gold.svg', 'heli', 'heli.svg', 
+        'cloud1', 'cloud_1.svg', 'cloud2', 'cloud_2.svg', 'cloud3', 'cloud_3.svg', 
+        'land', '03_ingame_land.png', 'effect', 'effect_pickup.svg',
+        'damage', 'damege.svg',
+        'mountain', 'surface_mountain.png', 'grass', 'surface_grass.png', 'target', 'surface_target.svg'
     ];
     imgList.forEach((val, i) => { if(i % 2 === 0) { imgs[val] = new Image(); imgs[val].src = imgList[i+1]; } });
 
     let state = 'MAIN', frame = 0, dist = 1500, score = 0, lives = 3;
+    let combo = 0, comboTimer = 0, popScale = 1.0, isGoldFever = false;
+
     const pX = WIDTH / 2, pY = HEIGHT * 0.28;
     let pDir = 1, objects = [], clouds = [], fx = [];
     let stopSpawning = false, mountainX = 0, grassX = 0, hitShakeFrame = 0;
-    
-    // 표정 관리 변수
-    let faceTimer = 0;
-    let currentFace = 'normal';
-
-    let flashFrame = 0, flashColor = "rgba(255, 0, 0, 0.3)";
-    let currentRotation = 0, rotVel = 0;
-    const targetRotationLeft = 0, targetRotationRight = -27 * Math.PI / 180;
-    const springK = 0.18, friction = 0.75; 
-    const GLOBAL_SPEED = 14; 
+    let faceTimer = 0, currentFace = 'normal', currentRotation = 0, rotVel = 0;
+    const springK = 0.18, friction = 0.75, GLOBAL_SPEED = 16.1; 
     let landY = HEIGHT + 1000, spawnDeck = [];
 
     function forceStart() {
@@ -97,54 +121,67 @@
     }
 
     function refillSpawnDeck() {
-        let newItems = [
-            'GOLD', 'BAD', 'BAD', 'BAD', 'BAD', 'BAD', 'BAD', 'BAD', 'BAD', 'BAD', 'BAD', 
-            'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 
-            'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 
-            'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE',
-            'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE',
-            'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE', 'CRATE'
-        ];
-        for (let i = newItems.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [newItems[i], newItems[j]] = [newItems[j], newItems[i]]; }
-        spawnDeck = [...spawnDeck, ...newItems];
+        let newItems = ['GOLD', 'BAD', 'BAD', 'BAD', 'BAD', 'BAD', 'BAD', 'BAD', 'BAD', 'BAD', 'BAD'];
+        for(let i=0; i<90; i++) { newItems.push('CRATE'); }
+        for (let i = newItems.length - 1; i > 0; i--) { 
+            const j = Math.floor(Math.random() * (i + 1)); 
+            [newItems[i], newItems[j]] = [newItems[j], newItems[i]]; 
+        }
+        spawnDeck = [...newItems];
     }
 
     function spawnCloud(y) {
         const depth = Math.floor(Math.random() * 2);
         const baseScale = depth === 0 ? 0.39 : 0.26;
-        clouds.push({ x: Math.random() * WIDTH, y: y || HEIGHT + 150, img: imgs['cloud'+(Math.floor(Math.random()*3)+1)], scale: baseScale * 1.3, alpha: depth === 0 ? 0.8 : 0.5, speed: depth === 0 ? 3.5 : 1.8, depth });
+        clouds.push({ x: Math.random() * WIDTH, y: y || HEIGHT + 150, img: imgs['cloud'+(Math.floor(Math.random()*3)+1)], scale: baseScale * 1.3, alpha: depth === 0 ? 0.8 : 0.5, speed: depth === 0 ? 4.0 : 2.0, depth });
     }
 
     function spawnObj() {
         if(stopSpawning) return;
-        if(spawnDeck.length < 5) refillSpawnDeck();
+        if(spawnDeck.length === 0) refillSpawnDeck();
         const type = spawnDeck.shift(); 
-        let x = Math.random() * (WIDTH - 100) + 50; 
+        let x = Math.random() * (WIDTH - 120) + 60; 
         const spawnY = HEIGHT + 200;
-        if(type === 'BAD') {
-            const tooClose = objects.some(o => o.type === 'BAD' && Math.abs(o.x - x) < 180); 
-            if(tooClose) x = (x + 250) % (WIDTH - 100) + 50;
-            objects.push({ x, y: spawnY, type: 'BAD', img: imgs.heli });
-        } else if(type === 'GOLD') {
-            objects.push({ x, y: spawnY, type: 'GOLD', img: imgs.gold });
-        } else {
-            objects.push({ x, y: spawnY, type: 'CRATE', img: imgs.crate });
-            if(Math.random() > 0.75) objects.push({ x: (x + 150) % (WIDTH - 100) + 50, y: spawnY + 80, type: 'CRATE', img: imgs.crate });
-        }
+        if(type === 'BAD') objects.push({ x, y: spawnY, type: 'BAD', img: imgs.heli });
+        else if(type === 'GOLD') objects.push({ x, y: spawnY, type: 'GOLD', img: imgs.gold });
+        else objects.push({ x, y: spawnY, type: 'CRATE', img: imgs.crate });
+    }
+
+    function updateLifeUI() { 
+        for(let i=0; i<3; i++) { 
+            const lifeEl = document.getElementById('life-' + i);
+            if(lifeEl) { lifeEl.src = (i >= (3 - lives)) ? 'mini_life.svg' : 'mini_death.svg'; }
+        } 
+    }
+
+    function addCombo() {
+        combo++;
+        comboTimer = 30; 
+        popScale = 1.4;  
+        isGoldFever = false; 
     }
 
     function triggerGoldFever() {
-        // 황금고구마 획득 시 표정 변화 (1.3초 = 78프레임)
-        currentFace = 'happy';
-        faceTimer = 78;
-        objects.forEach(o => { if(o.type === 'CRATE') score++; fx.push({ x: o.x, y: o.y, img: imgs.effect, life: 108, follow: false, vx: 0, vy: -GLOBAL_SPEED, type: 'PICKUP' }); });
+        currentFace = 'happy'; faceTimer = 78;
+        isGoldFever = true; 
+        objects.forEach(o => { 
+            if(o.type === 'CRATE') {
+                // 피버 상태면 2점, 아니면 1점
+                score += (combo >= 20) ? 2 : 1;
+                addCombo(); 
+                fx.push({ x: o.x, y: o.y, img: imgs.effect, life: 60, follow: false, vy: -5 });
+            }
+        });
+        isGoldFever = true; 
         objects = [];
     }
 
-    function updateLifeUI() { for(let i=0; i<3; i++) { document.getElementById('life-' + i).src = (i < lives) ? 'mini_life.png' : 'mini_death.png'; } }
-
     function gameOver(title) {
         state = 'END';
+        if (lives > 0) {
+            totalScore += score;
+            localStorage.setItem('totalSupplyBoxes', totalScore);
+        }
         document.getElementById('result-title').innerText = title;
         document.getElementById('final-score').innerText = score;
         document.getElementById('result-screen').style.display = 'flex';
@@ -156,70 +193,65 @@
     function loop() {
         if(state === 'END') return;
         frame++; 
-        const scrollSpeed = (state === 'LANDED') ? 0 : 10; 
-        let targetRot = (pDir === 1) ? targetRotationLeft : targetRotationRight;
-        let force = (targetRot - currentRotation) * springK;
-        rotVel = (rotVel + force) * friction;
-        currentRotation += rotVel;
-
-        if(state === 'PLAY') {
-            dist -= 1.41; 
-            mountainX -= pDir * 1.8; 
-            grassX -= pDir * scrollSpeed;
+        
+        if(!isGoldFever) {
+            if(comboTimer > 0) comboTimer--;
+            else combo = 0;
         }
+        
+        if(popScale > 1.0) popScale -= 0.08;
+        if(popScale < 1.0) popScale = 1.0;
 
+        let targetRot = (pDir === 1) ? 0 : -27 * Math.PI / 180;
+        rotVel = (rotVel + (targetRot - currentRotation) * springK) * friction;
+        currentRotation += rotVel;
+        if(state === 'PLAY') {
+            dist -= 1.62; mountainX -= pDir * 2.07; grassX -= pDir * 11.5;
+            if(frame % 7 === 0) spawnObj(); 
+            if(frame % 80 === 0) spawnCloud();
+        }
         document.getElementById('dist-val').innerText = Math.max(0, Math.floor(dist));
         document.getElementById('score-val').innerText = score;
-
         const targetArrivalY = pY + 140 - 248;
         if(dist < 150 && state === 'PLAY') {
             if(landY > targetArrivalY) landY -= GLOBAL_SPEED; 
-            else {
-                landY = targetArrivalY;
-                if(dist <= 5) { 
-                    dist = 0; state = 'LANDED'; 
-                    setTimeout(() => { if(state !== 'END') gameOver("작전 완료!"); }, 500); 
-                }
-            }
+            else { landY = targetArrivalY; if(dist <= 5) { dist = 0; state = 'LANDED'; setTimeout(() => gameOver("작전 완료!"), 500); } }
             stopSpawning = true;
         }
-
-        if(state === 'PLAY') {
-            const spawnInterval = 7 + Math.floor(Math.random() * 4);
-            if(frame % spawnInterval === 0) spawnObj();
-            if(frame % 80 === 0) spawnCloud();
-        }
-
-        clouds.forEach((c, i) => { 
-            c.y -= (state === 'LANDED') ? 0 : c.speed; 
-            c.x -= (state === 'LANDED') ? 0 : pDir * c.speed * 0.3; 
-            if(c.y < -350) clouds.splice(i,1); 
-        });
-
         objects.forEach((o, i) => {
-            o.y -= GLOBAL_SPEED; o.x -= pDir * 10;
-            if(o.y < -150) { objects.splice(i, 1); return; } 
-
+            o.y -= GLOBAL_SPEED; o.x -= pDir * 11.5;
+            if(o.y < -200) { objects.splice(i, 1); return; } 
             const dx = pX - o.x, dy = pY - o.y;
             if(state === 'PLAY' && Math.sqrt(dx*dx + dy*dy) < 115) {
                 if(o.type === 'BAD') {
-                    lives--; updateLifeUI(); hitShakeFrame = 10; flashFrame = 10;
-                    
-                    // 헬기 충돌 시 표정 변화 (1.3초 = 78프레임)
-                    currentFace = 'miss';
-                    faceTimer = 78;
-
-                    fx.push({ x: pX, y: pY - 140, img: imgs.damage, life: 40, follow: true, type: 'DAMAGE', scale: 0.8 });
-                    if(lives <= 0) setTimeout(() => { gameOver("작전 실패..."); }, 500);
-                } else if(o.type === 'GOLD') triggerGoldFever();
-                else { score++; fx.push({ x: o.x, y: o.y, img: imgs.effect, life: 108, follow: false, vy: -GLOBAL_SPEED, type: 'PICKUP' }); }
+                    lives--; score = Math.max(0, score - 10);
+                    combo = 0; comboTimer = 0; isGoldFever = false;
+                    updateLifeUI(); hitShakeFrame = 10;
+                    currentFace = 'miss'; faceTimer = 78;
+                    fx.push({ x: pX + 70, y: pY + 20, img: imgs.damage, life: 60, follow: true, vy: -4.2 });
+                    if(lives <= 0) setTimeout(() => gameOver("작전 실패..."), 500);
+                } else if(o.type === 'GOLD') {
+                    triggerGoldFever();
+                }
+                else { 
+                    // 20콤보 이상이면 2점 획득
+                    score += (combo >= 20) ? 2 : 1; 
+                    addCombo(); 
+                    fx.push({ x: o.x, y: o.y, img: imgs.effect, life: 60, follow: false, vy: -5 }); 
+                }
                 objects.splice(i, 1);
             }
         });
+        clouds.forEach(c => { c.y -= c.speed; c.x -= pDir * c.speed * 0.3; });
+        
+        fx.forEach((f, i) => { 
+            f.life--; 
+            if(f.life <= 0) { fx.splice(i, 1); return; }
+            if(!f.follow) { f.x -= pDir * 11.5; f.y -= GLOBAL_SPEED; } 
+            f.y += f.vy || 0; 
+        });
 
-        fx.forEach((f, i) => { if(f.life > 0) f.life--; else fx.splice(i, 1); if(!f.follow) { f.x -= pDir * 10; f.y += f.vy; if(f.y < -150) fx.splice(i, 1); } });
         if(hitShakeFrame > 0) hitShakeFrame--;
-        if(flashFrame > 0) flashFrame--; 
         draw();
         requestAnimationFrame(loop);
     }
@@ -227,80 +259,85 @@
     function draw() {
         ctx.clearRect(0, 0, WIDTH, HEIGHT);
         ctx.fillStyle = '#C0EEFE'; ctx.fillRect(0, 0, WIDTH, HEIGHT);
-        
-        clouds.sort((a, b) => b.depth - a.depth).forEach(c => {
+        clouds.forEach(c => {
+            if(!c.img.complete) return;
             ctx.save(); ctx.globalAlpha = c.alpha;
-            ctx.drawImage(c.img, c.x - (300*c.scale)/2, c.y, 300*c.scale, 180*c.scale);
+            ctx.drawImage(c.img, c.x - (c.img.width*c.scale*2), c.y, c.img.width*c.scale*4, c.img.height*c.scale*4);
             ctx.restore();
         });
-
+        
         ctx.save();
-        ctx.beginPath();
-        ctx.rect(0, 130, WIDTH, HEIGHT); 
-        ctx.clip();
-
         if(dist < 150) {
             if(imgs.mountain.complete) {
-                const mImg = imgs.mountain, mScale = 1.65, mWidth = 600 * mScale, mHeight = 120 * mScale;
-                const mRelX = (mountainX * 1.0) % mWidth;
-                for(let x = -3; x <= 3; x++) ctx.drawImage(mImg, mRelX + (x * mWidth), landY - mHeight, mWidth, mHeight);
+                const mW = imgs.mountain.width * 0.82, mH = imgs.mountain.height * 0.82;
+                for(let x = -3; x <= 3; x++) ctx.drawImage(imgs.mountain, ((mountainX * 1.0) % mW) + (x * mW), landY - mH, mW, mH);
             }
             if(imgs.grass.complete) {
-                const gImg = imgs.grass, gWidth = WIDTH, gHeight = 185 * 2, relX = (grassX * 1.0) % gWidth;
-                ctx.fillStyle = '#7AC6A6'; ctx.fillRect(0, landY, WIDTH, HEIGHT + 1200);
-                for(let x = -2; x <= 2; x++) ctx.drawImage(gImg, relX + (x * gWidth), landY, gWidth, gHeight);
+                ctx.fillStyle = '#7AC6A6'; ctx.fillRect(0, landY, WIDTH, HEIGHT);
+                for(let x = -2; x <= 2; x++) ctx.drawImage(imgs.grass, ((grassX * 1.0) % WIDTH) + (x * WIDTH), landY, WIDTH, imgs.grass.height);
             }
             if(imgs.target.complete) {
-                const tImg = imgs.target, tW = 240, tH = tW * (tImg.naturalHeight / tImg.naturalWidth);
-                ctx.drawImage(tImg, pX - tW/2, landY - tH/2 + 220, tW, tH);
+                const tW = (imgs.target.width > 0) ? imgs.target.width : 240;
+                const tH = (imgs.target.height > 0) ? imgs.target.height : 96;
+                ctx.drawImage(imgs.target, pX - tW, landY + 180, tW * 2, tH * 2);
             }
         }
 
         objects.forEach(o => {
-            if(o.type !== 'BAD') {
-                if(o.type === 'GOLD') { ctx.save(); ctx.shadowBlur = 30; ctx.shadowColor = "yellow"; ctx.drawImage(o.img, o.x - 50, o.y, 100, 100); ctx.restore(); }
-                else ctx.drawImage(o.img, o.x - 50, o.y, 100, 100);
-            }
-        });
-        objects.forEach(o => {
-            if(o.type === 'BAD') {
-                const hW = (216 * 1.42) * 0.75, hH = (146 * 1.42) * 0.75;
-                ctx.drawImage(o.img, o.x - hW/2, o.y, hW, hH);
-            }
+            if(!o.img.complete) return;
+            ctx.drawImage(o.img, o.x - o.img.width, o.y - o.img.height, o.img.width * 2, o.img.height * 2);
         });
 
         ctx.save();
-        let sX = 0; if(hitShakeFrame > 0) sX = (Math.random() - 0.5) * 25;
-        const floatY = (state === 'PLAY' && dist > 5) ? Math.sin(frame*0.08)*7.5 : 0;
-        ctx.translate(pX + sX, pY + floatY);
+        let sX = (hitShakeFrame > 0) ? (Math.random() - 0.5) * 25 : 0;
+        ctx.translate(pX + sX, pY + Math.sin(frame*0.08)*7.5);
         ctx.rotate(currentRotation); 
-        
-        if(hitShakeFrame % 4 > 1) ctx.globalAlpha = 0.5;
-
-        let playerImg = imgs.player;
-        if(faceTimer > 0) {
-            playerImg = (currentFace === 'happy') ? imgs.face_happy : imgs.face_miss;
-            faceTimer--;
-        }
-
-        if(playerImg && playerImg.complete) {
-            ctx.drawImage(playerImg, -143, -143, 286, 286);
-        }
+        let pImg = (faceTimer > 0) ? (currentFace === 'happy' ? imgs.face_happy : imgs.face_miss) : imgs.player;
+        if(faceTimer > 0) faceTimer--;
+        if(pImg.complete) ctx.drawImage(pImg, -pImg.width, -pImg.height, pImg.width * 2, pImg.height * 2);
         ctx.restore();
 
         fx.forEach(f => {
-            ctx.save();
-            let opacity = 1.0;
-            const totalLife = 108; const fadeInFrame = 6; const fadeOutFrame = 12;
-            if(f.type === 'PICKUP') { if(f.life > totalLife - fadeInFrame) opacity = (totalLife - f.life) / fadeInFrame; else if(f.life <= fadeOutFrame) opacity = f.life / fadeOutFrame; }
-            ctx.globalAlpha = opacity;
-            const baseW = 140, baseH = 84, drawScale = f.scale || 1.0;
-            ctx.drawImage(f.img, (f.follow ? pX : f.x) - (baseW * drawScale)/2, (f.follow ? pY : f.y) - 100, baseW * drawScale, baseH * drawScale);
+            if(!f.img.complete) return;
+            ctx.save(); 
+            ctx.globalAlpha = Math.min(1, f.life / 20); 
+            ctx.drawImage(f.img, f.x - f.img.width, f.y - f.img.height, f.img.width * 2, f.img.height * 2);
             ctx.restore();
         });
         ctx.restore(); 
 
-        if(flashFrame > 0) { ctx.fillStyle = flashColor; ctx.fillRect(0, 0, WIDTH, HEIGHT); }
+        // ★ 피버 모드 반영된 다이나믹 콤보 UI
+        if(combo > 1 || isGoldFever) {
+            ctx.save();
+            const comboX = 250 * 2; 
+            const comboY = 150 * 2;
+            
+            ctx.translate(comboX, comboY);
+            ctx.scale(popScale, popScale);
+            ctx.translate(-comboX, -comboY);
+
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.lineJoin = 'round';
+            ctx.lineWidth = 10; 
+            
+            // 20콤보 이상이면 아웃라인 컬러 변경 (#E97A36)
+            ctx.strokeStyle = (combo >= 20) ? '#E97A36' : '#E9B636'; 
+            ctx.fillStyle = '#FFFFFF';
+
+            // 숫자 부분
+            ctx.font = 'italic 800 80px Pretendard'; 
+            ctx.strokeText(combo, comboX, comboY);
+            ctx.fillText(combo, comboX, comboY);
+
+            // COMBO 부분 (20콤보 이상이면 'COMBO x2')
+            ctx.font = 'italic 700 32px Pretendard'; 
+            let comboText = (combo >= 20) ? 'COMBO x2' : 'COMBO';
+            ctx.strokeText(comboText, comboX, comboY + 75);
+            ctx.fillText(comboText, comboX, comboY + 75);
+            
+            ctx.restore();
+        }
     }
     draw();
 </script>
